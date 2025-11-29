@@ -119,6 +119,25 @@ def get_info(sid: str) -> utils.ResultDTO:
     db.close_db_connection(conn)
     return utils.ResultDTO(code=200, message="세션을 성공적으로 조회했습니다.", data={'session_info': session_info}, result=True)
 
+def deactivate_all_sessions(uid: int) -> utils.ResultDTO:
+    # 사용자 존재 여부 확인
+    user_info = db.user.get_info(uid)
+    if not user_info.result:
+        return utils.ResultDTO(code=404, message="존재하지 않는 사용자입니다.", result=False)
+
+    conn = db.get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("UPDATE user_sessions SET is_active = 0 WHERE uid = ?", (uid,))
+        conn.commit()
+
+        return utils.ResultDTO(code=200, message="모든 세션이 성공적으로 비활성화되었습니다.", result=True)
+    except sqlite3.Error as e:
+        return utils.ResultDTO(code=500, message=f"세션 비활성화에 실패했습니다: {e}", result=False)
+    finally:
+        db.close_db_connection(conn)
+
 def get_session_deactive_info(link_hash: str) -> utils.ResultDTO:
     conn = db.get_db_connection()
     cursor = conn.cursor()

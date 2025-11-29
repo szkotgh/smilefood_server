@@ -288,7 +288,7 @@ def get_find_password_link_info(link_hash: str) -> utils.ResultDTO:
         return utils.ResultDTO(code=404, message="해당 링크 정보를 찾을 수 없습니다.", result=False)
 
     # create_at이 3분이 지난 is_used가 False이고 is_active가 True인 경우 is_active를 False로 변경
-    if not utils.is_minutes_passed(row['created_at'], 3) and row['is_active']:
+    if utils.is_minutes_passed(row['created_at'], 3) and row['is_active']:
         cursor.execute("UPDATE user_password_find_link SET is_active = 0 WHERE link_hash = ?", (link_hash,))
         conn.commit()
 
@@ -315,8 +315,8 @@ def find_password(user_email: str) -> utils.ResultDTO:
     conn = db.get_db_connection()
     cursor = conn.cursor()
     
-    # 기존 사용되지 않은 링크가 있는지 확인
-    cursor.execute("SELECT created_at FROM user_password_find_link WHERE email = ? AND is_used = 0", (user_email,))
+    # 기존 사용되지 않은 링크가 있는지 확인 (3분 이내 생성된 것만)
+    cursor.execute("SELECT created_at FROM user_password_find_link WHERE email = ? AND is_used = 0 AND created_at > datetime('now', '-3 minute', '+9 hours')", (user_email,))
     row = cursor.fetchone()
     
     if row:
@@ -374,3 +374,96 @@ def change_password(link_hash: str, new_password: str) -> utils.ResultDTO:
         db.close_db_connection(conn)
 
     return utils.ResultDTO(code=200, message="비밀번호를 성공적으로 변경했습니다.", result=True)
+
+def update_password(sid, password, change_password) -> utils.ResultDTO:
+    if not sid:
+        return utils.ResultDTO(code=400, message="SID가 필요합니다.", result=False)
+    if not password:
+        return utils.ResultDTO(code=400, message="현재 비밀번호가 필요합니다.", result=False)
+    if not change_password:
+        return utils.ResultDTO(code=400, message="새로운 비밀번호가 필요합니다.", result=False)
+    if not utils.is_valid_password(change_password):
+        return utils.ResultDTO(code=400, message="비밀번호 형식이 올바르지 않습니다. (영문, 숫자, 기호 8~256자)", result=False)
+    
+    session_info = db.session.get_info(sid)
+    if not session_info.result:
+        return session_info.to_response()
+    if not session_info.data['session_info']['is_active']:
+        return utils.ResultDTO(code=401, message="비활성화된 세션입니다.", result=False)
+    
+    uid = session_info.data['session_info']['uid']
+    validate_info = validate_user_by_uid(uid, password)
+    if not validate_info.result:
+        return utils.ResultDTO(code=401, message="현재 비밀번호가 일치하지 않습니다.", result=False)
+
+    salt = utils.gen_hash(16)
+    hashed_password = utils.str_to_hash(change_password + salt)
+
+    conn = db.get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("UPDATE users SET password = ?, salt = ? WHERE uid = ?", (hashed_password, salt, uid))
+    conn.commit()
+
+    if cursor.rowcount == 0:
+        db.close_db_connection(conn)
+        return utils.ResultDTO(code=400, message="비밀번호 변경에 실패했습니다.", result=False)
+
+    db.close_db_connection(conn)
+    
+    # logout all session
+    db.session.deactivate_all_sessions(uid)
+    
+    return utils.ResultDTO(code=200, message="비밀번호가 성공적으로 변경되었습니다.", result=True)
+    
+def update_name(sid, change_name) -> utils.ResultDTO:
+    if not sid:
+        return utils.ResultDTO(code=400, message="SID가 필요합니다.", result=False)
+    if not utils.is_valid_username(change_name):
+        return utils.ResultDTO(code=400, message="올바르지 않은 이름입니다. (한글, 영어 1~20자)", result=False)
+    
+    session_info = db.session.get_info(sid)
+    if not session_info.result:
+        return session_info.to_response()
+    if not session_info.data['session_info']['is_active']:
+        return utils.ResultDTO(code=401, message="비활성화된 세션입니다.", result=False)
+
+    uid = session_info.data['session_info']['uid']
+    conn = db.get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("UPDATE users SET name = ? WHERE uid = ?", (change_name, uid))
+    conn.commit()
+
+    if cursor.rowcount == 0:
+        db.close_db_connection(conn)
+        return utils.ResultDTO(code=400, message="이름 변경에 실패했습니다.", result=False)
+
+    db.close_db_connection(conn)
+    return utils.ResultDTO(code=200, message="이름이 성공적으로 변경되었습니다.", result=True)
+
+def update_profile_image(sid, profile_url) -> utils.ResultDTO:
+    if not sid:
+        return utils.ResultDTO(code=400, message="SID가 필요합니다.", result=False)
+    if not profile_url:
+        return utils.ResultDTO(code=400, message="프로필 이미지 URL이 필요합니다.", result=False)
+    
+    session_info = db.session.get_info(sid)
+    if not session_info:
+        return session_info.to_response()
+    if not session_info.data['session_info']['is_active']:
+        return utils.ResultDTO(code=401, message="비활성화된 세션입니다.", result=False)
+    
+    uid = session_info.data['session_info']['uid']
+    conn = db.get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("UPDATE users SET profile_url = ? WHERE uid = ?", (profile_url, uid))
+    conn.commit()
+
+    if cursor.rowcount == 0:
+        db.close_db_connection(conn)
+        return utils.ResultDTO(code=400, message="프로필 이미지 URL 변경에 실패했습니다.", result=False)
+
+    db.close_db_connection(conn)
+    return utils.ResultDTO(code=200, message="프로필 이미지 URL이 성공적으로 변경되었습니다.", result=True)

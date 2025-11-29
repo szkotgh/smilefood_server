@@ -1,3 +1,4 @@
+import json
 import os
 import db
 import db.session
@@ -123,7 +124,7 @@ def regi_food_with_barcode(sid:str, barcode:str, food_count:int) -> utils.Result
     food_name = None
     food_type = "정보 없음"
     food_expiration_date = datetime.now() + timedelta(days=3*30)
-    food_expiration_date_desc = "3개월 이내(유통기한 정보 없음)"
+    food_expiration_date_desc = "3개월 이내(소비기한 정보 없음)"
     food_image_url = None
     food_volume = None
     try:
@@ -153,13 +154,10 @@ def regi_food_with_barcode(sid:str, barcode:str, food_count:int) -> utils.Result
     
     # Get Ingredients
     ingredients = '정보없음'
-    if barcode == "8801043014830": # 농심 신라면
-        ingredients = "면/소맥분(밀:호주산, 미국산), 팜유(말레이시아산), 감자전분(덴마크산), 변성전분, 난각칼슘, 정제염, 이스트조미분, 면류첨가알칼리제(산도조절제), 혼합제제(산도조절제), 올리고녹차풍미액, 비타민B2, 스프류: 복합조미간장분말, 정제염, 버섯풍미분말, 정백당, 비프조미분, 변성전분, 매운탕분말, 사골된장분말, 양파풍미분, 생고추조미분말, 칠리맛조미분, 수육조미분, 포도당, 양념구이조미분, 볶음양념분, 후추가루, 조미양념분, 분말된장, 치킨풍미분말, 마늘추출물분말, 육수조미분말, 5’-리보뉴클레오티드이나트륨, 호박산이나트륨, 양파조미베이스, 장국양념분말, 다시마정미추출분말, 매운맛조미분, 고춧가루, 분말카라멜(카라멜색소, 물엿분말), 생강추출물분말, 조미건백, 건파, 건표고버섯, 건당근, 건청경채, 조미건조홍고추"
-    if barcode == "8801043014847": # 농심 신라면건면
-        ingredients = "면/소맥분(밀:호주산, 미국산), 감자전분(덴마크산), 팜유(말레이시아산), 난각칼슘, 정제염, 이스트조미분, 면류첨가알칼리제(산도조절제), 혼합제제(산도조절제), 올리고녹차풍미액, 비타민B2, 스프류: 복합조미간장분말, 정제염, 버섯풍미분말, 정백당, 비프조미분, 변성전분, 매운탕분말, 사골된장분말, 양파풍미분, 생고추조미분말, 칠리맛조미분, 수육조미분, 포도당, 양념구이조미분, 볶음양념분, 후추가루, 조미양념분, 분말된장, 치킨풍미분말, 마늘추출물분말, 육수조미분말, 5’-리보뉴클레오티드이나트륨, 호박산이나트륨, 양파조미베이스, 장국양념분말, 다시마정미추출분말, 매운맛조미분, 고춧가루, 분말카라멜(카라멜색소, 물엿분말), 생강추출물분말, 조미건백, 건파, 건표고버섯, 건당근, 건청경채, 조미건조홍고추"
-    if barcode == "8801382123446": # 아침햇살
-        ingredients = "정제수, 설탕, 식물혼합농축액(쌀추출액(국산), 현미추출액(국산)), 크림믹스(야자유(인도네시아산, 필리핀산)), 카제인나트륨, 제이인산칼륨, 합성향료(현미향), 비타민C, 자동증자추출물" 
-    
+    with open(os.path.join(os.path.dirname(__file__), '../static/ingredients_info.json'), 'r', encoding='utf-8') as f:
+        ingredients_data = json.load(f)
+        if barcode in ingredients_data:
+            ingredients = ingredients_data[barcode]
     
     # DB
     fid = utils.gen_hash(16)

@@ -16,7 +16,8 @@ class ResultDTO:
         return {
             'code': self.code,
             'message': self.message,
-            'data': self.data
+            'data': self.data,
+            'result': self.result
         }
         
     def to_response(self):

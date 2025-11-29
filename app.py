@@ -22,9 +22,9 @@ def method_not_allowed_error(error):
 def internal_error(error):
     return utils.ResultDTO(code=500, message="서버 내부 오류가 발생했습니다.", result=False).to_response()
 
-# @app.errorhandler(Exception)
-# def unhandled_exception(error):
-#     return utils.ResultDTO(code=500, message=f"오류가 발생했습니다: {str(error)}", result=False).to_response()
+@app.errorhandler(Exception)
+def unhandled_exception(error):
+    return utils.ResultDTO(code=500, message=f"오류가 발생했습니다: {str(error)}", result=False).to_response()
 
 if __name__ == '__main__':
-    app.run(os.environ['SERVER_IP'], os.environ['SERVER_PORT'], debug=True)
+    app.run(os.environ['SERVER_IP'], os.environ['SERVER_PORT'])

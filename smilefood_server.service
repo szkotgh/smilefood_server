@@ -1,0 +1,13 @@
+[Unit]
+Description=Smilefood Application Server
+Documentation=https://github.com/szkotgh/smilefood_server
+After=network.target
+
+[Service]
+WorkingDirectory=/home/administrator/smilefood_server
+ExecStart=/bin/bash /home/administrator/smilefood_server/stater.sh
+Restart=always
+User=administrator
+
+[Install]
+WantedBy=multi-user.target

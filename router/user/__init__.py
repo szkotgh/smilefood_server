@@ -52,7 +52,6 @@ def find_password():
         link_info = db.user.get_find_password_link_info(link_hash)
         if not link_info.result:
             return f"{link_info.message}", link_info.code
-        print(link_info.data)
         
         if link_info.data['pw_find_info']['is_used']:
             return "이미 사용된 링크입니다.", 400
@@ -73,3 +72,29 @@ def find_password():
         
         # 비밀번호 변경 링크 요청 시
         return db.user.find_password(user_email).to_response()
+    
+@user_bp.route('/profile', methods=['POST'])
+def update_profile():
+    sid = request.form.get('sid')
+    if not sid:
+        return utils.ResultDTO(code=401, message="Require sid.").to_response()
+
+    new_name = request.form.get('name')
+    password = request.form.get('password')
+    new_password = request.form.get('new_password')
+    new_profile_image_url = request.form.get('profile_image_url')
+    
+    if new_name:
+        name_update_result = db.user.update_name(sid, new_name)
+        if not name_update_result.result:
+            return name_update_result.to_response()
+    if password and new_password:
+        password_update_result = db.user.update_password(sid, password, new_password)
+        if not password_update_result.result:
+            return password_update_result.to_response()
+    if new_profile_image_url:
+        profile_image_update_result = db.user.update_profile_image(sid, new_profile_image_url)
+        if not profile_image_update_result.result:
+            return profile_image_update_result.to_response()
+
+    return utils.ResultDTO(200, "업데이트 되었습니다.").to_response()
