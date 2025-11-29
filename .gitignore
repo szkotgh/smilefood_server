@@ -2,5 +2,6 @@ __pycache__/
 
 .env
 db/main.db
+static/install/*
 
 db/profiles/*
